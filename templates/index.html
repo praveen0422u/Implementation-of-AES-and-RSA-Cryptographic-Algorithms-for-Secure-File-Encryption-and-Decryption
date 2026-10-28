@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Encryption & Decryption System | AES-256 + RSA-3072</title>
+    <meta name="description" content="Cybersecurity dashboard for authenticated hybrid file encryption and decryption using AES-256-GCM and RSA-3072 OAEP.">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1>CNS Cryptographic Guard</h1>
+                    <p class="subtitle">Secure Hybrid File Encryption System &bull; AES-256-GCM &bull; RSA-3072 OAEP</p>
+                </div>
+            </div>
+            <div class="system-status" id="system-status-container" title="System Engine Status">
+                <span class="status-indicator-dot" id="status-dot"></span>
+                <span class="status-label" id="status-label">Connecting to Engine...</span>
+            </div>
+        </header>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="tabs-nav" role="tablist" aria-label="Cryptographic Dashboard Tabs">
+            <button class="tab-button active" id="tab-btn-encrypt" role="tab" aria-selected="true" aria-controls="panel-encrypt" tabindex="0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Encrypt File (.sfe)
+            </button>
+            <button class="tab-button" id="tab-btn-decrypt" role="tab" aria-selected="false" aria-controls="panel-decrypt" tabindex="-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                </svg>
+                Decrypt File
+            </button>
+            <button class="tab-button" id="tab-btn-keys" role="tab" aria-selected="false" aria-controls="panel-keys" tabindex="-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 2l-2 2m-1-1l-3 3m2-4l-3 3m-2-2l-3 3m1-1l-2 2m-2-2l-3 3"></path>
+                    <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                </svg>
+                Generate RSA Keys
+            </button>
+            <button class="tab-button" id="tab-btn-edu" role="tab" aria-selected="false" aria-controls="panel-edu" tabindex="-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                AES vs RSA Architecture
+            </button>
+        </nav>
+
+        <!-- Main Dashboard Panels -->
+        <main class="dashboard-main">
+
+            <!-- ============================================================ -->
+            <!-- TAB 1: ENCRYPT FILE PANEL                                    -->
+            <!-- ============================================================ -->
+            <section class="tab-panel active" id="panel-encrypt" role="tabpanel" aria-labelledby="tab-btn-encrypt">
+                <div class="panel-grid">
+                    <!-- Form Card -->
+                    <div class="card form-card">
+                        <div class="card-header">
+                            <div>
+                                <h2>File Encryption (Sender)</h2>
+                                <p class="card-desc">Encrypt any file using a fresh AES-256 session key sealed with the recipient's RSA public key.</p>
+                            </div>
+                            <span class="badge badge-accent">AEAD Protected</span>
+                        </div>
+
+                        <!-- Global Alert Container for Encrypt -->
+                        <div class="alert-box hidden" id="encrypt-alert" role="alert" aria-live="polite"></div>
+
+                        <form id="encrypt-form" novalidate>
+                            <!-- Step 1: File Selection -->
+                            <div class="form-group">
+                                <label class="form-label" for="encrypt-file-input">
+                                    <span class="step-num">1</span>
+                                    Select Target File
+                                    <span class="label-hint">(Max: 16 MB)</span>
+                                </label>
+                                <div class="drop-zone" id="encrypt-dropzone" tabindex="0" role="button" aria-label="Drop file here or click to browse">
+                                    <input type="file" id="encrypt-file-input" class="file-input-hidden" aria-hidden="true">
+                                    <div class="drop-zone-content" id="encrypt-drop-prompt">
+                                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        <p class="drop-title">Drag & drop file here, or <span class="link-span">browse</span></p>
+                                        <p class="drop-subtitle">Any arbitrary binary or text document</p>
+                                    </div>
+                                    <!-- Selected File Preview -->
+                                    <div class="selected-file-preview hidden" id="encrypt-file-preview">
+                                        <div class="file-info-col">
+                                            <span class="file-name" id="encrypt-preview-name">filename.ext</span>
+                                            <span class="file-size" id="encrypt-preview-size">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-icon" id="encrypt-file-clear" title="Remove selected file" aria-label="Remove selected file">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Recipient RSA Public Key -->
+                            <div class="form-group">
+                                <div class="label-row">
+                                    <label class="form-label" for="encrypt-pubkey-text">
+                                        <span class="step-num">2</span>
+                                        Recipient RSA Public Key
+                                    </label>
+                                    <div class="key-input-toggle">
+                                        <label for="encrypt-pubkey-file" class="btn btn-sm btn-outline">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            Upload .pem Key
+                                        </label>
+                                        <input type="file" id="encrypt-pubkey-file" accept=".pem,.pub,.key,.txt" class="file-input-hidden" aria-label="Upload public key file">
+                                    </div>
+                                </div>
+                                <textarea id="encrypt-pubkey-text" class="textarea-code" rows="5" placeholder="-----BEGIN PUBLIC KEY-----&#10;Paste recipient's RSA public key PEM here...&#10;-----END PUBLIC KEY-----" spellcheck="false" required></textarea>
+                                <span class="field-hint">Used by RSA-OAEP (SHA-256) to encapsulate the one-time 256-bit AES session key.</span>
+                            </div>
+
+                            <!-- Action Button & Progress -->
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-block" id="btn-submit-encrypt">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                    Encrypt & Generate .sfe Package
+                                </button>
+                                <div class="progress-container hidden" id="encrypt-progress" aria-live="polite">
+                                    <div class="progress-bar-indeterminate"></div>
+                                    <span class="progress-label">Generating CSPRNG session key & packaging .sfe archive...</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Side Result / Info Card -->
+                    <div class="card result-card">
+                        <div class="card-header">
+                            <h3>Encryption Container</h3>
+                            <span class="badge" id="encrypt-result-badge">Awaiting Input</span>
+                        </div>
+                        <div id="encrypt-result-placeholder" class="result-placeholder">
+                            <div class="shield-illustration" aria-hidden="true">
+                                <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                            </div>
+                            <p>Upload a file and recipient public key to generate an authenticated <strong>.sfe</strong> encrypted package.</p>
+                        </div>
+
+                        <!-- Success Box (Rendered upon successful encryption) -->
+                        <div id="encrypt-result-box" class="result-success-box hidden">
+                            <div class="success-icon-badge">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <h4>Encryption Successful</h4>
+                            <p class="result-subtext">The payload is sealed using AES-256-GCM and the session key is encapsulated with RSA-OAEP.</p>
+                            
+                            <div class="meta-preview-list">
+                                <div class="meta-item">
+                                    <span class="meta-label">Package Name</span>
+                                    <span class="meta-val" id="res-enc-pkgname">package.sfe</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Integrity Tag</span>
+                                    <span class="meta-val">128-bit GCM MAC Attached</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Session Key</span>
+                                    <span class="meta-val">32-Byte Ephemeral AES Sealed</span>
+                                </div>
+                            </div>
+
+                            <a href="#" class="btn btn-accent btn-block" id="btn-download-sfe" download>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Download Encrypted Package (.sfe)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- TAB 2: DECRYPT FILE PANEL                                    -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-decrypt" role="tabpanel" aria-labelledby="tab-btn-decrypt">
+                <div class="panel-grid">
+                    <!-- Form Card -->
+                    <div class="card form-card">
+                        <div class="card-header">
+                            <div>
+                                <h2>File Decryption (Receiver)</h2>
+                                <p class="card-desc">Unwrap the AES session key using your private key and verify 128-bit GCM authentication.</p>
+                            </div>
+                            <span class="badge badge-accent">Tamper-Proof Verify</span>
+                        </div>
+
+                        <!-- Global Alert Container for Decrypt -->
+                        <div class="alert-box hidden" id="decrypt-alert" role="alert" aria-live="polite"></div>
+
+                        <form id="decrypt-form" novalidate>
+                            <!-- Step 1: Package Selection -->
+                            <div class="form-group">
+                                <label class="form-label" for="decrypt-file-input">
+                                    <span class="step-num">1</span>
+                                    Select Encrypted Package (.sfe)
+                                    <span class="label-hint">(Max: 16 MB)</span>
+                                </label>
+                                <div class="drop-zone" id="decrypt-dropzone" tabindex="0" role="button" aria-label="Drop .sfe file here or click to browse">
+                                    <input type="file" id="decrypt-file-input" accept=".sfe" class="file-input-hidden" aria-hidden="true">
+                                    <div class="drop-zone-content" id="decrypt-drop-prompt">
+                                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        <p class="drop-title">Drag & drop <strong>.sfe</strong> container here, or <span class="link-span">browse</span></p>
+                                        <p class="drop-subtitle">Verified Secure File Encryption packages only</p>
+                                    </div>
+                                    <!-- Selected Package Preview -->
+                                    <div class="selected-file-preview hidden" id="decrypt-file-preview">
+                                        <div class="file-info-col">
+                                            <span class="file-name" id="decrypt-preview-name">package.sfe</span>
+                                            <span class="file-size" id="decrypt-preview-size">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-icon" id="decrypt-file-clear" title="Remove selected file" aria-label="Remove selected file">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Recipient RSA Private Key -->
+                            <div class="form-group">
+                                <div class="label-row">
+                                    <label class="form-label" for="decrypt-privkey-text">
+                                        <span class="step-num">2</span>
+                                        Recipient RSA Private Key
+                                    </label>
+                                    <div class="key-input-toggle">
+                                        <label for="decrypt-privkey-file" class="btn btn-sm btn-outline">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            Upload .pem Key
+                                        </label>
+                                        <input type="file" id="decrypt-privkey-file" accept=".pem,.key,.txt" class="file-input-hidden" aria-label="Upload private key file">
+                                    </div>
+                                </div>
+                                <textarea id="decrypt-privkey-text" class="textarea-code" rows="5" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;Paste recipient's RSA private key PEM here...&#10;-----END RSA PRIVATE KEY-----" spellcheck="false" required></textarea>
+                                <span class="field-hint">Processed in ephemeral server memory only. Never logged or written to disk.</span>
+                            </div>
+
+                            <!-- Optional Passphrase -->
+                            <div class="form-group">
+                                <label class="form-label" for="decrypt-passphrase">
+                                    Passphrase <span class="label-hint">(Optional, only if private key is encrypted)</span>
+                                </label>
+                                <input type="password" id="decrypt-passphrase" class="form-input" placeholder="Enter key passphrase if applicable" autocomplete="off">
+                            </div>
+
+                            <!-- Action Button & Progress -->
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-block" id="btn-submit-decrypt">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                    </svg>
+                                    Authenticate & Decrypt File
+                                </button>
+                                <div class="progress-container hidden" id="decrypt-progress" aria-live="polite">
+                                    <div class="progress-bar-indeterminate"></div>
+                                    <span class="progress-label">Unwrapping session key and verifying 128-bit authentication tag...</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Side Result / Info Card -->
+                    <div class="card result-card">
+                        <div class="card-header">
+                            <h3>Decrypted Output</h3>
+                            <span class="badge" id="decrypt-result-badge">Awaiting Input</span>
+                        </div>
+                        <div id="decrypt-result-placeholder" class="result-placeholder">
+                            <div class="shield-illustration" aria-hidden="true">
+                                <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <p>Provide an <strong>.sfe</strong> package and corresponding private key to authenticate integrity and download the decrypted file.</p>
+                        </div>
+
+                        <!-- Success Box (Rendered upon successful decryption) -->
+                        <div id="decrypt-result-box" class="result-success-box hidden">
+                            <div class="success-icon-badge">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <h4>Integrity Verified & Decrypted</h4>
+                            <p class="result-subtext">The file passed 128-bit GCM MAC verification. Zero data tampering detected.</p>
+                            
+                            <div class="meta-preview-list">
+                                <div class="meta-item">
+                                    <span class="meta-label">Original Filename</span>
+                                    <span class="meta-val" id="res-dec-filename">restored_file.bin</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Decrypted Size</span>
+                                    <span class="meta-val" id="res-dec-filesize">0 Bytes</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Authentication Status</span>
+                                    <span class="meta-val text-success">Passed & Authenticated</span>
+                                </div>
+                            </div>
+
+                            <a href="#" class="btn btn-accent btn-block" id="btn-download-decrypted" download>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Download Decrypted File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- TAB 3: GENERATE RSA KEYS PANEL                               -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-keys" role="tabpanel" aria-labelledby="tab-btn-keys">
+                <div class="card full-width-card">
+                    <div class="card-header">
+                        <div>
+                            <h2>Asymmetric RSA Key Pair Generation</h2>
+                            <p class="card-desc">Generate a cryptographically secure RSA key pair using native PyCryptodome CSPRNG.</p>
+                        </div>
+                        <span class="badge badge-accent">NIST SP 800-56B</span>
+                    </div>
+
+                    <div class="alert-box hidden" id="keys-alert" role="alert" aria-live="polite"></div>
+
+                    <div class="key-gen-controls">
+                        <div class="form-group-inline">
+                            <label class="form-label" for="select-key-size">Key Modulus Size:</label>
+                            <select id="select-key-size" class="form-select">
+                                <option value="3072" selected>3072 bits (Recommended - 128-bit Security Margin)</option>
+                                <option value="2048">2048 bits (Standard Minimum)</option>
+                                <option value="4096">4096 bits (Maximum Security / Computationally Intensive)</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btn-trigger-keygen">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 2l-2 2m-1-1l-3 3m2-4l-3 3m-2-2l-3 3m1-1l-2 2m-2-2l-3 3"></path>
+                                <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                            </svg>
+                            Generate New Key Pair
+                        </button>
+                    </div>
+
+                    <!-- Indeterminate Progress for Keygen -->
+                    <div class="progress-container hidden" id="keygen-progress" aria-live="polite">
+                        <div class="progress-bar-indeterminate"></div>
+                        <span class="progress-label" id="keygen-progress-label">Generating cryptographically strong prime numbers (Miller-Rabin testing)...</span>
+                    </div>
+
+                    <!-- Key Output Cards Container -->
+                    <div class="keys-output-grid hidden" id="keys-output-area">
+                        <!-- Public Key Card -->
+                        <div class="key-box">
+                            <div class="key-box-header">
+                                <div class="key-title">
+                                    <span class="status-indicator-dot active"></span>
+                                    <h4>RSA Public Key (Share Freely)</h4>
+                                </div>
+                                <span class="badge" id="pubkey-bits-badge">3072-bit</span>
+                            </div>
+                            <p class="key-explainer">Send this public key to anyone who wants to send you encrypted files.</p>
+                            <textarea id="output-public-pem" class="textarea-code key-preview" rows="7" readonly spellcheck="false"></textarea>
+                            <div class="key-card-actions">
+                                <button type="button" class="btn btn-sm btn-outline" id="btn-download-pubkey">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Download public_key.pem
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline" id="btn-copy-pubkey">
+                                    Copy Key
+                                </button>
+                                <button type="button" class="btn btn-sm btn-accent" id="btn-use-pubkey-encrypt">
+                                    Use in Encrypt Tab &rarr;
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Private Key Card -->
+                        <div class="key-box key-box-private">
+                            <div class="key-box-header">
+                                <div class="key-title">
+                                    <span class="status-indicator-dot active"></span>
+                                    <h4>RSA Private Key (Keep Strictly Confidential)</h4>
+                                </div>
+                                <span class="badge badge-warning">Confidential</span>
+                            </div>
+                            <p class="key-explainer">Required to decrypt your files. Never share this with anyone or commit to Git.</p>
+                            <textarea id="output-private-pem" class="textarea-code key-preview" rows="7" readonly spellcheck="false"></textarea>
+                            <div class="key-card-actions">
+                                <button type="button" class="btn btn-sm btn-outline" id="btn-download-privkey">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Download private_key.pem
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline" id="btn-copy-privkey">
+                                    Copy Key
+                                </button>
+                                <button type="button" class="btn btn-sm btn-accent" id="btn-use-privkey-decrypt">
+                                    Use in Decrypt Tab &rarr;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- TAB 4: EDUCATIONAL PANEL (AES vs RSA)                        -->
+            <!-- ============================================================ -->
+            <section class="tab-panel" id="panel-edu" role="tabpanel" aria-labelledby="tab-btn-edu">
+                <div class="panel-grid">
+                    <div class="card full-width-card">
+                        <div class="card-header">
+                            <div>
+                                <h2>Why Hybrid Cryptography? (AES-256 + RSA-3072)</h2>
+                                <p class="card-desc">Understanding how modern cryptographic systems combine symmetric and asymmetric algorithms.</p>
+                            </div>
+                            <span class="badge badge-accent">CNS Educational Core</span>
+                        </div>
+
+                        <!-- Comparison Table -->
+                        <div class="table-responsive">
+                            <table class="edu-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Cryptographic Property</th>
+                                        <th scope="col">AES-256-GCM (Symmetric)</th>
+                                        <th scope="col">RSA-3072 / OAEP (Asymmetric)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Core Role</strong></td>
+                                        <td>Bulk file data encryption & authenticated integrity</td>
+                                        <td>Secure session key distribution & encapsulation</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Key Configuration</strong></td>
+                                        <td>Single 256-bit symmetric key shared per session</td>
+                                        <td>Public key (encryption) / Private key (decryption) pair</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Throughput / Speed</strong></td>
+                                        <td>Extremely fast hardware-accelerated throughput (GB/s)</td>
+                                        <td>Computationally slow modular exponentiation</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Maximum Payload Size</strong></td>
+                                        <td>Up to 64 Gigabytes per unique nonce</td>
+                                        <td>Limited by modulus: 384 bytes max per OAEP block</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Integrity Assurance</strong></td>
+                                        <td>Built-in 128-bit authentication tag (AEAD)</td>
+                                        <td>IND-CCA2 security via OAEP padding</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Architecture Cards -->
+                        <div class="edu-cards-grid">
+                            <div class="edu-card">
+                                <h4>1. The Key Distribution Dilemma</h4>
+                                <p>Symmetric ciphers like AES are exceptionally fast and secure, but require sender and receiver to share a secret key in advance. Transmitting secret keys across unencrypted channels exposes them to interception.</p>
+                            </div>
+                            <div class="edu-card">
+                                <h4>2. The Asymmetric Size Barrier</h4>
+                                <p>RSA solves key distribution by allowing anyone to encrypt with a public key. However, RSA can only encrypt messages smaller than its modulus (e.g., ~318 bytes for RSA-3072 with OAEP SHA-256), making it impossible to encrypt large files directly.</p>
+                            </div>
+                            <div class="edu-card">
+                                <h4>3. The Hybrid Synthesis (.sfe)</h4>
+                                <p>The system generates an ephemeral 32-byte AES key and 12-byte nonce for each file. AES encrypts the entire file in GCM mode. RSA-OAEP wraps only the small 32-byte AES key, achieving the speed of AES with the public-key security of RSA.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>CNS Mini-Project &bull; Computer Networks & Security &bull; Engineered with Python Flask & PyCryptodome &bull; Client Zero-Persistence Security</p>
+        </footer>
+    </div>
+
+    <!-- Client-side application script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
